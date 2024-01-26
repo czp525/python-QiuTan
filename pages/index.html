@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>比赛配置</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>比赛设置</h1>
+    <h3 style="color: red;">输入框中直接输入数字，无需单位</h3>
+    <form id="dataForm">
+      <label for="match_time">获取每场比赛数据的上半场截止时间（默认20分钟，20分钟前）:</label>
+      <input type="text" id="match_time" name="match_time" required>
+      <label for="shooting_sum">两队射门总数设定（默认为4，大于等于）:</label>
+      <input type="text" id="shooting_sum" name="shooting_sum" required>
+      <label for="shootingOn_sum">两队射正总数设定（默认3，大于等于）:</label>
+      <input type="text" id="shootingOn_sum" name="shootingOn_sum" required>
+      <label for="dangerous_sum">两队危险进攻次数总和设定（默认30，大于等于）:</label>
+      <input type="text" id="dangerous_sum" name="dangerous_sum" required>
+      <label for="shooting_differ">两队射门差值设定（默认为5，大于等于）:</label>
+      <input type="text" id="shooting_differ" name="shooting_differ" required>
+      <label for="dangerous_differ">两队危险进攻次数差值设定（默认15，大于等于）:</label>
+      <input type="text" id="dangerous_differ" name="dangerous_differ" required>
+    
+      <button type="button" onclick="updateData()">更新设置</button>
+      <button type="button" onclick="exportData()">导出数据</button>
+      <button type="button" onclick="filterLeague()">设置屏蔽联赛</button>
+    </form>
+
+    <div id="displayData"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      getDefaultValues();
+    });
+
+    var url = 'http://192.168.1.5:3000';
+
+    function getDefaultValues() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url + '/getDefaultValues', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          var defaultValues = JSON.parse(xhr.responseText);
+
+          document.getElementById('match_time').value = defaultValues.match_time_setting;
+          document.getElementById('shooting_sum').value = defaultValues.total_shooting_setting;
+          document.getElementById('shootingOn_sum').value = defaultValues.total_shootingOn_setting;
+          document.getElementById('dangerous_sum').value = defaultValues.total_dangerous_attacks_setting;
+          document.getElementById('shooting_differ').value = defaultValues.differ_shooting_setting;
+          document.getElementById('dangerous_differ').value = defaultValues.differ_dangerous_attacks_setting;
+        
+        } else {
+          console.error('Failed to retrieve default values. Status code: ' + xhr.status);
+        }
+      };
+
+      xhr.send();
+    }
+    
+    function updateData() {
+      // 获取表单中所有 input 的值
+      var matchTime = document.getElementById('match_time').value;
+      var shootingSum = document.getElementById('shooting_sum').value;
+      var shootingOnSum = document.getElementById('shootingOn_sum').value;
+      var dangerousSum = document.getElementById('dangerous_sum').value;
+      var shootingDiffer = document.getElementById('shooting_differ').value;
+      var dangerousDiffer = document.getElementById('dangerous_differ').value;
+    
+      if (isNaN(matchTime) || isNaN(shootingSum) || isNaN(shootingOnSum) || isNaN(dangerousSum) || isNaN(shootingDiffer) || isNaN(dangerousDiffer)) {
+        alert('输入内容包含非数字，请输入数字。');
+      } else {
+        var data = {
+          match_time_setting: matchTime,
+          total_shooting_setting: shootingSum,
+          total_shootingOn_setting: shootingOnSum,
+          total_dangerous_attacks_setting: dangerousSum,
+          differ_shooting_setting: shootingDiffer,
+          differ_dangerous_attacks_setting: dangerousDiffer
+        };
+      
+        fetch(url + '/updateSettings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to update data. Status code: ' + response.status);
+            }
+            return response.json();
+          })
+          .then(result => {
+            console.log('成功更新数据:', result);
+            alert('更新比赛设置成功。');
+          })
+          .catch(error => {
+            console.error('错误更新数据:', error.message);
+          }
+        );
+      }
+    }
+
+    function exportData() {
+      fetch(url + '/exportData')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Error exporting data: ${response.status} ${response.statusText}`);
+          }
+          return response.blob();
+        })
+        .then(blobData => {
+          const blob = new Blob([blobData], { type: 'text/csv' });
+    
+          // 创建一个临时URL
+          const url = URL.createObjectURL(blob);
+    
+          // 创建一个下载链接
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'data.csv';
+          a.textContent = 'Download CSV';
+    
+          // 将链接添加到页面并模拟点击下载
+          document.body.appendChild(a);
+          a.click();
+    
+          // 清理
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+          console.error(error.message);
+        });
+    }
+    
+    function filterLeague() {
+      window.location.href = 'filterLeague.html';
+    }
+
+  </script>
+</body>
+</html>

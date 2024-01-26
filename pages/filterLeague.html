@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>忽略联赛</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #filterForm {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    label {
+      margin: 5px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      flex-basis: calc(33.33% - 10px);
+      box-sizing: border-box;
+      background-color: #ffffff;
+      height: auto; /* 设置固定的高度 */
+      overflow: hidden; /* 隐藏超出高度的内容 */
+      
+    }
+
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    #displayData {
+      margin-top: 20px;
+    }
+
+    #searchBox {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    #searchInput {
+      margin-top: 5px;
+      padding: 5px;
+      width: 100%;
+    }
+
+    #submitButton {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>屏蔽联赛</h1>
+    <h3 style="color: red">选中即为屏蔽</h3>
+
+    <!-- 添加搜索框 -->
+    <div id="searchBox" style="display: flex; align-items: center; flex-direction: row; margin-bottom:10px;">
+      <div for="searchInput" style="margin-right: 10px; margin-bottom: 0;">关键字搜索：</div>
+      <input type="text" id="searchInput" oninput="searchOptions()" style="flex: 1; margin-bottom: 0;">
+    </div>
+    
+
+    <form id="filterForm">
+      <!-- Existing filter options will be dynamically added here -->
+    </form>
+
+    <button id="submitButton" onclick="submitFilter()">提交修改</button>
+    <button id="submitButton" onclick="backToSetting()">返回首页</button>
+
+    <div id="displayData"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      getFilterOptions();
+    });
+
+    var url = 'http://192.168.1.5:3000';
+
+    function getFilterOptions() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url + '/league', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          var filterOptions = JSON.parse(xhr.responseText);
+
+          filterOptions.forEach(option => {
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.name = option.league_name;
+            input.value = option.league_name;
+            input.checked = (option.is_filter === '1') ? true : false;
+          
+            var label = document.createElement('label');
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(option.league_name));
+          
+            var filterForm = document.getElementById('filterForm');
+          
+            var lineBreak = document.createElement('br');
+          
+            filterForm.appendChild(label);
+            filterForm.appendChild(lineBreak);
+          });
+          
+        } else {
+          console.error('Failed to retrieve filter options. Status code: ' + xhr.status);
+        }
+      };
+      xhr.send();
+    }
+
+    function submitFilter() {
+      const selectedOptions = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(input => ({
+        name: input.name,
+      }));
+      fetch(url + '/submit_filter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedOptions),
+      })
+      .then(response => response.text())
+      .then(alert("修改屏蔽联赛成功"))
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    }
+    
+
+    function searchOptions() {
+      var searchValue = document.getElementById('searchInput').value.toLowerCase();
+      var labels = document.querySelectorAll('#filterForm label');
+
+      labels.forEach(label => {
+        var labelText = label.innerText.toLowerCase();
+        if (labelText.includes(searchValue)) {
+          label.style.display = 'flex';
+        } else {
+          label.style.display = 'none';
+        }
+      });
+    }
+
+    function backToSetting() {
+      window.location.href = "http://192.168.1.5:8080";
+    }
+  </script>
+
+</body>
+</html>
