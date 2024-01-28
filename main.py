@@ -1,5 +1,3 @@
-import sys
-sys.path.append("/Users/caizhaoping/Library/Python/3.9/lib/python/site-packages")
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
@@ -10,7 +8,7 @@ from bs4 import BeautifulSoup
 import schedule
 import time
 import datetime
-import mysql.connector
+import pymysql
 
 #发送邮件
 def send_email(current_time, smtp_host, smtp_port, username, password, sender, receivers, subject, body):
@@ -45,12 +43,15 @@ def emailInfo(current_time, isSend_email, match_league, match_time, result, tota
 
 #连接数据库
 def connect_to_database():
-    return  mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="caizhaoping525",
-    database="python"
-)
+    connection = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="caizhaoping525",
+        database="python",
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    return connection
 
 #获取已经发送过邮件的比赛
 def get_isSend_match():
@@ -60,7 +61,7 @@ def get_isSend_match():
     table_name = "match"
     query = f"SELECT `match_id` FROM `{table_name}`"
     cursor.execute(query)
-    result = [row[0] for row in cursor.fetchall() or []]
+    result = [row['match_id'] for row in cursor.fetchall() or []]
     cursor.close()
     connection.close()
     return result
@@ -92,7 +93,10 @@ def insert_leagues(leagues):
 
 #获取比赛场次    
 def scrape_data(current_time):
-    url = "http://m.titan007.com/Schedule.htm?date=2024-01-26"
+    current_time = datetime.datetime.now()
+    new_time = current_time - datetime.timedelta(hours=10)# 减去十个小时
+    formatted_date = new_time.strftime("%Y-%m-%d")
+    url = f"http://m.titan007.com/Schedule.htm?date={formatted_date}"
     headers = {
         'User-Agent': 'PostmanRuntime/7.35.0',
     }
@@ -353,10 +357,10 @@ def main():
     matchUrl = scrape_data(current_time) #当前正在进行的所有比赛[2389602]
     if len(matchUrl) == 0:
       print("当前没有正在进行的比赛")
-    matchSetting = getMatchSettings() #比赛配置
+    matchSetting = tuple(getMatchSettings().values()) #比赛配置
     if not matchSetting:
       print("获取比赛配置失败")
-      matchSetting = [22, 4, 1, 33, 5, 15]
+      matchSetting = (22, 4, 1, 33, 5, 15)
     match_time_setting, total_shooting_setting, total_shootingOn_setting, total_dangerous_attacks_setting, differ_shooting_setting, differ_dangerous_attacks_setting = matchSetting
     filterUrls = filter_url(matchUrl, match_time_setting)#默认前20分钟比赛[2389602,2507090,2507091]
     isSend_match = get_isSend_match() #获取符合条件并且已经发送过邮件的比赛web_url
@@ -381,5 +385,5 @@ def main():
 schedule.every(60).seconds.do(main)
 while True:
     schedule.run_pending()
-    # schedule.run_all()#缩短定时
+    schedule.run_all()#缩短定时
     time.sleep(1)
